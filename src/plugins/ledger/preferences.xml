@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen>
+    <ListPreference
+        key="coin"
+        title="Криптовалюта"
+        dialogTitle="Выберите криптовалюту"
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        entries="Bitcoin|Ethereum|Litecoin|Polygon|Dogecoin"
+        entryValues="btc|eth|ltc|matic|doge"
+        defaultValue="btc"
+        summary="|Монета|{@s}"
+        obligatory="true"
+    />
+    <EditTextPreference
+        key="addresses"
+        obligatory="true"
+        title="Адреса кошельков"
+        dialogTitle="Публичные адреса"
+        dialogMessage="Укажите публичные адреса через запятую. Найти их в Ledger Live: выберите счёт → Получить."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|Адреса|{@s}"
+    />
+</PreferenceScreen>
