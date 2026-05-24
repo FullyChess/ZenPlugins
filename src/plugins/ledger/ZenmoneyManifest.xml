@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<provider>
+    <id>ledger</id>
+    <company>16068</company>
+    <description>
+        Синхронизация всех криптовалютных кошельков Ledger в одном плагине.
+        Поддерживает: Bitcoin (xpub — автоматически все адреса HD-кошелька),
+        Ethereum + все ERC-20 токены, Polygon + USDC и другие токены,
+        TRON + USDT-TRC20 и другие TRC-20 токены, TON + все Jettons,
+        Solana + все SPL-токены (автоматически через Jupiter).
+        Достаточно указать по одному адресу/ключу для каждой сети.
+    </description>
+    <version>2.0</version>
+    <build>1</build>
+    <modular>true</modular>
+    <api>public</api>
+    <files>
+        <js>index.js</js>
+        <preferences>preferences.xml</preferences>
+    </files>
+</provider>
