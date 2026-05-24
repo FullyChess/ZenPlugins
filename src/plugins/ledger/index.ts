@@ -1,46 +1,43 @@
 import type { ScrapeFunc } from '../../types/zenmoney'
-import { fetchBalance, fetchUtxoTransactions, fetchAccountTransactions } from './api'
-import { COIN_CONFIG } from './config'
-import {
-  convertAccount,
-  convertUtxoTransaction,
-  convertAccountTransaction,
-  mergeTransferTransactions
-} from './converters'
 import type { Preferences } from './types'
+import { scrapeBitcoin } from './chains/bitcoin'
+import { scrapeEvm } from './chains/evm'
+import { scrapeTron } from './chains/tron'
+import { scrapeTon } from './chains/ton'
+import { scrapeSolana } from './chains/solana'
 
 export const scrape: ScrapeFunc<Preferences> = async ({ preferences, fromDate }) => {
-  const addresses = preferences.addresses.split(',').map(a => a.trim()).filter(Boolean)
-  const coin = preferences.coin
-  const config = COIN_CONFIG[coin]
+  const tasks: Array<Promise<{ accounts: Array<import('../../types/zenmoney').Account>, transactions: Array<import('../../types/zenmoney').Transaction> }>> = []
 
-  const accounts = await Promise.all(
-    addresses.map(async address => {
-      const { balance } = await fetchBalance(coin, address)
-      return convertAccount(address, balance, config)
-    })
-  )
+  if (preferences.btcXpub !== undefined && preferences.btcXpub !== '') {
+    tasks.push(scrapeBitcoin(preferences.btcXpub, fromDate))
+  }
 
-  const allTransactions = (await Promise.all(
-    addresses.map(async address => {
-      if (config.type === 'utxo') {
-        const txs = await fetchUtxoTransactions(coin, address, fromDate)
-        return txs.flatMap(tx => {
-          const converted = convertUtxoTransaction(address, tx, config)
-          return converted !== null ? [converted] : []
-        })
-      } else {
-        const txs = await fetchAccountTransactions(coin, address, fromDate)
-        return txs.flatMap(tx => {
-          const converted = convertAccountTransaction(address, tx, config)
-          return converted !== null ? [converted] : []
-        })
-      }
-    })
-  )).flat()
+  if ((preferences.ethAddress !== undefined && preferences.ethAddress !== '') ||
+      (preferences.maticAddress !== undefined && preferences.maticAddress !== '')) {
+    const apiKey = preferences.etherscanApiKey ?? ''
+    if (apiKey === '') {
+      throw new Error('Etherscan API Key обязателен для синхронизации ETH и Polygon')
+    }
+    tasks.push(scrapeEvm(preferences.ethAddress, preferences.maticAddress, apiKey, fromDate))
+  }
+
+  if (preferences.tronAddress !== undefined && preferences.tronAddress !== '') {
+    tasks.push(scrapeTron(preferences.tronAddress, fromDate))
+  }
+
+  if (preferences.tonAddress !== undefined && preferences.tonAddress !== '') {
+    tasks.push(scrapeTon(preferences.tonAddress, fromDate))
+  }
+
+  if (preferences.solanaAddresses !== undefined && preferences.solanaAddresses !== '') {
+    tasks.push(scrapeSolana(preferences.solanaAddresses, fromDate))
+  }
+
+  const results = await Promise.all(tasks)
 
   return {
-    accounts,
-    transactions: mergeTransferTransactions(allTransactions)
+    accounts: results.flatMap(r => r.accounts),
+    transactions: results.flatMap(r => r.transactions)
   }
 }

@@ -1,25 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen>
-    <ListPreference
-        key="coin"
-        title="Криптовалюта"
-        dialogTitle="Выберите криптовалюту"
+    <EditTextPreference
+        key="btcXpub"
+        title="Bitcoin — Extended public key (xpub)"
+        dialogTitle="Bitcoin xpub / zpub / ypub"
+        dialogMessage="Ledger Live → Accounts → выберите Bitcoin-счёт → Edit account → Advanced → Extended public key. Один ключ покрывает все адреса кошелька."
         positiveButtonText="ОК"
         negativeButtonText="Отмена"
-        entries="Bitcoin|Ethereum|Litecoin|Polygon|Dogecoin"
-        entryValues="btc|eth|ltc|matic|doge"
-        defaultValue="btc"
-        summary="|Монета|{@s}"
-        obligatory="true"
+        summary="|Bitcoin|настроен"
     />
     <EditTextPreference
-        key="addresses"
-        obligatory="true"
-        title="Адреса кошельков"
-        dialogTitle="Публичные адреса"
-        dialogMessage="Укажите публичные адреса через запятую. Найти их в Ledger Live: выберите счёт → Получить."
+        key="ethAddress"
+        title="Ethereum — адрес (ETH + все ERC-20 токены)"
+        dialogTitle="Ethereum адрес"
+        dialogMessage="Один адрес автоматически покрывает ETH и все ERC-20 токены."
         positiveButtonText="ОК"
         negativeButtonText="Отмена"
-        summary="|Адреса|{@s}"
+        summary="|Ethereum|{@s}"
+    />
+    <EditTextPreference
+        key="maticAddress"
+        title="Polygon — адрес (MATIC + USDC и др.)"
+        dialogTitle="Polygon адрес"
+        dialogMessage="Обычно совпадает с Ethereum-адресом. Покрывает MATIC и все ERC-20 токены в сети Polygon."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|Polygon|{@s}"
+    />
+    <EditTextPreference
+        key="etherscanApiKey"
+        title="Etherscan API Key (для ETH и Polygon)"
+        dialogTitle="Etherscan v2 API Key"
+        dialogMessage="Бесплатный ключ: зарегистрируйтесь на etherscan.io → My API Keys → Add. Один ключ работает для ETH и Polygon."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|Etherscan API|настроен"
+    />
+    <EditTextPreference
+        key="tronAddress"
+        title="TRON — адрес (TRX + USDT-TRC20 и др.)"
+        dialogTitle="TRON адрес"
+        dialogMessage="Адрес начинается с T. Покрывает TRX и все TRC-20 токены."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|TRON|{@s}"
+    />
+    <EditTextPreference
+        key="tonAddress"
+        title="TON — адрес (TON + все Jettons)"
+        dialogTitle="TON адрес"
+        dialogMessage="Принимается любой формат: EQ..., UQ..., 0:... Покрывает TON и все Jetton-токены."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|TON|{@s}"
+    />
+    <EditTextPreference
+        key="solanaAddresses"
+        title="Solana — адрес(а) (SOL + все SPL-токены)"
+        dialogTitle="Solana адрес(а)"
+        dialogMessage="Один или несколько адресов через запятую. Все SPL-токены на каждом адресе будут показаны автоматически."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="|Solana|{@s}"
     />
 </PreferenceScreen>

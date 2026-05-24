@@ -1,72 +1,21 @@
-export type CoinId = 'btc' | 'eth' | 'ltc' | 'matic' | 'doge'
-
 export interface Preferences {
-  coin: CoinId
-  addresses: string
+  // Bitcoin — extended public key (xpub/zpub/ypub from Ledger Live → Edit Account → Advanced)
+  btcXpub?: string
+  // Ethereum address — covers ETH + all ERC-20 tokens automatically
+  ethAddress?: string
+  // Polygon address — usually the same as ethAddress; covers MATIC + USDC and other tokens
+  maticAddress?: string
+  // Etherscan v2 API key — free at etherscan.io, covers both ETH and Polygon
+  etherscanApiKey?: string
+  // TRON address — covers TRX + USDT-TRC20 and all TRC-20 tokens
+  tronAddress?: string
+  // TON address — covers TON + all Jettons
+  tonAddress?: string
+  // Solana address(es) — comma-separated; covers SOL + all SPL tokens
+  solanaAddresses?: string
 }
 
-export interface CoinConfig {
-  instrument: string
-  // divisor to convert smallest unit (satoshi/wei/etc) to ZenMoney instrument unit
-  divisor: number
-  type: 'utxo' | 'account'
-}
-
-// UTXO-based transaction (BTC, LTC, DOGE)
-export interface UtxoInput {
-  input_index: number
-  value: string
-  address: string
-}
-
-export interface UtxoOutput {
-  output_index: number
-  value: string
-  address: string
-}
-
-export interface UtxoBlock {
-  hash: string
-  height: number
-  time: string
-}
-
-export interface UtxoTransaction {
-  id: string
-  hash: string
-  received_at: string
-  fees: string
-  inputs: UtxoInput[]
-  outputs: UtxoOutput[]
-  block?: UtxoBlock
-  confirmations: number
-}
-
-// Account-based transaction (ETH, MATIC)
-export interface AccountTransaction {
-  hash: string
-  received_at: string
-  value: string
-  gas: string
-  gas_price: string
-  gas_used: string
-  from: string
-  to: string
-  status: number
-  confirmations: number
-  block?: {
-    hash: string
-    height: number
-    time: string
-  }
-}
-
-export interface AddressBalance {
-  address: string
-  balance: string
-}
-
-export interface LedgerPage<T> {
-  data: T[]
-  token?: string
+export interface ScrapeResult {
+  accounts: Array<import('../../types/zenmoney').Account>
+  transactions: Array<import('../../types/zenmoney').Transaction>
 }
