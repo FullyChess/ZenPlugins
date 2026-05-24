@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen>
+    <EditTextPreference
+        key="port"
+        obligatory="false"
+        inputType="number"
+        title="Порт Ledger Live"
+        dialogTitle="Порт Ledger Live"
+        dialogMessage="Порт WebSocket-сервера Ledger Live. Оставьте пустым для использования порта по умолчанию (1248)."
+        positiveButtonText="ОК"
+        negativeButtonText="Отмена"
+        summary="||1248"
+    />
+</PreferenceScreen>
