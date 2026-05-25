@@ -1,22 +1,44 @@
 import { ScrapeFunc } from '../../types/zenmoney'
-import { getAccounts, getOperations, isExplorerSupported, Preferences } from './api'
-import { convertAccounts, convertTransactions } from './converters'
+import { Preferences } from './api'
+import { parseLedgerCsv } from './csvParser'
+import { buildAccounts, buildTransactions } from './converters'
 
-export const scrape: ScrapeFunc<Preferences> = async ({ fromDate, preferences }) => {
-  const port = parseInt(preferences.port ?? '1248', 10)
+// FileReader is a DOM global — declare it for TypeScript (no dom lib in tsconfig)
+declare class FileReader {
+  result: string | ArrayBuffer | null
+  onload: (() => void) | null
+  onerror: (() => void) | null
+  readAsText (blob: Blob, encoding?: string): void
+}
 
-  const rawAccounts = await getAccounts(port)
-  const accounts = convertAccounts(rawAccounts)
+async function readBlob (blob: Blob): Promise<string> {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Не удалось прочитать CSV файл'))
+    reader.readAsText(blob, 'utf-8')
+  })
+}
 
-  const transactions = (
-    await Promise.all(
-      rawAccounts.map(async (raw) => {
-        if (!isExplorerSupported(raw.currency)) return []
-        const txs = await getOperations(raw.currency, raw.address, fromDate)
-        return convertTransactions(txs, raw)
-      })
-    )
-  ).flat()
+export const scrape: ScrapeFunc<Preferences> = async ({ fromDate }) => {
+  const files = await ZenMoney.pickDocuments(['text/csv', 'text/plain', '*/*'], false)
+  if (files.length === 0) {
+    throw new Error('Файл не выбран. Выберите CSV-файл, экспортированный из Ledger Wallet.')
+  }
+
+  const text = await readBlob(files[0])
+  const allRows = parseLedgerCsv(text)
+
+  if (allRows.length === 0) {
+    throw new Error('CSV-файл пустой или имеет неизвестный формат. Убедитесь, что вы экспортировали файл из Ledger Wallet.')
+  }
+
+  // Balances are computed from ALL rows (full CSV history)
+  const accounts = buildAccounts(allRows)
+
+  // Transactions are filtered by the ZenMoney sync start date
+  const recentRows = allRows.filter(r => new Date(r.date) >= fromDate)
+  const transactions = buildTransactions(recentRows)
 
   return { accounts, transactions }
 }

@@ -1,111 +1,90 @@
 import { Account, AccountType, Movement, Transaction } from '../../types/zenmoney'
-import { getDecimals } from './api'
-import { LedgerExplorerTx, RawLedgerAccount } from './types'
+import { LedgerCsvRow } from './types'
 
-// Ledger Live currency id → ZenMoney instrument code
-const INSTRUMENT_MAP: Record<string, string> = {
-  bitcoin: 'BTC',
-  bitcoin_cash: 'BCH',
-  bitcoin_gold: 'BTG',
-  litecoin: 'LTC',
-  dogecoin: 'DOGE',
-  dash: 'DASH',
-  zcash: 'ZEC',
-  ethereum: 'ETH',
-  ethereum_classic: 'ETC',
-  solana: 'SOL',
-  polkadot: 'DOT',
-  ripple: 'XRP',
-  stellar: 'XLM',
-  tron: 'TRX',
-  cosmos: 'ATOM',
-  tezos: 'XTZ',
-  cardano: 'ADA',
-  avalanche_c_chain: 'AVAX',
-  near: 'NEAR',
-  ton: 'TON',
-  algorand: 'ALGO'
-}
+// One ZenMoney account per currency ticker found in the CSV.
+// Balance = sum of all amounts (IN positive, OUT/FEES negative).
+export function buildAccounts (rows: LedgerCsvRow[]): Account[] {
+  const balances = new Map<string, number>()
 
-function toFullUnit (smallestUnit: string, decimals: number): number {
-  return Number(smallestUnit) / Math.pow(10, decimals)
-}
-
-export function convertAccount (raw: RawLedgerAccount): Account {
-  const decimals = getDecimals(raw.currency)
-  const instrument = INSTRUMENT_MAP[raw.currency] ?? raw.currency.toUpperCase()
-
-  return {
-    id: raw.id,
-    type: AccountType.checking,
-    title: raw.name.length > 0 ? raw.name : instrument,
-    instrument,
-    syncIds: [raw.address],
-    balance: toFullUnit(raw.balance, decimals)
+  for (const row of rows) {
+    balances.set(row.ticker, (balances.get(row.ticker) ?? 0) + row.amount)
   }
+
+  return Array.from(balances.entries()).map(([ticker, raw]) => {
+    // Round away floating-point noise (8 significant decimal places is enough for crypto)
+    const balance = Math.round(raw * 1e8) / 1e8
+
+    return {
+      id: `ledger-${ticker}`,
+      type: AccountType.checking,
+      title: `Ledger ${ticker}`,
+      instrument: ticker,
+      syncIds: [`ledger-${ticker}`],
+      balance
+    } satisfies Account
+  })
 }
 
-export function convertAccounts (rawAccounts: RawLedgerAccount[]): Account[] {
-  return rawAccounts.map(convertAccount)
+// Group rows by (ticker, txHash) to merge FEES into the parent OUT operation.
+interface TxGroup {
+  main: LedgerCsvRow
+  fees: number  // absolute fee value
 }
 
-function buildMovement (accountId: string, sum: number, fee: number, txId: string): Movement {
+function groupRows (rows: LedgerCsvRow[]): Map<string, TxGroup> {
+  const groups = new Map<string, TxGroup>()
+
+  for (const row of rows) {
+    // Rows with no hash can't be deduplicated — use a synthetic unique key
+    const key = row.txHash !== ''
+      ? `${row.ticker}-${row.txHash}`
+      : `${row.ticker}-${row.date}-${row.amount}`
+
+    const existing = groups.get(key)
+
+    if (row.type === 'FEES') {
+      if (existing != null) {
+        groups.set(key, { ...existing, fees: existing.fees + Math.abs(row.amount) })
+      } else {
+        groups.set(key, { main: row, fees: Math.abs(row.amount) })
+      }
+    } else {
+      if (existing != null) {
+        groups.set(key, { ...existing, main: row })
+      } else {
+        groups.set(key, { main: row, fees: 0 })
+      }
+    }
+  }
+
+  return groups
+}
+
+function buildMovement (group: TxGroup): Movement {
   return {
-    id: txId,
-    account: { id: accountId },
+    id: group.main.txHash !== '' ? group.main.txHash : null,
+    account: { id: `ledger-${group.main.ticker}` },
     invoice: null,
-    sum,
-    fee
+    sum: group.main.amount,
+    fee: group.fees
   }
 }
 
-export function convertTransaction (
-  tx: LedgerExplorerTx,
-  account: RawLedgerAccount
-): Transaction | null {
-  // Only process confirmed transactions
-  if (tx.block == null || tx.confirmations < 1) return null
+export function buildTransactions (rows: LedgerCsvRow[]): Transaction[] {
+  const groups = groupRows(rows)
 
-  const decimals = getDecimals(account.currency)
-  const address = account.address.toLowerCase()
-
-  const inputTotal = tx.inputs
-    .filter(i => i.address.toLowerCase() === address)
-    .reduce((sum, i) => sum + Number(i.value), 0)
-
-  const outputTotal = tx.outputs
-    .filter(o => o.address.toLowerCase() === address)
-    .reduce((sum, o) => sum + Number(o.value), 0)
-
-  const netSmallest = outputTotal - inputTotal
-  if (netSmallest === 0) return null
-
-  const netFull = toFullUnit(String(Math.abs(netSmallest)), decimals)
-  const feeFull = toFullUnit(tx.fees, decimals)
-
-  const sum = netSmallest > 0 ? netFull : -netFull
-  const fee = netSmallest < 0 ? feeFull : 0
-
-  const movement = buildMovement(account.id, sum, fee, tx.hash)
-
-  return {
-    hold: false,
-    date: new Date(tx.received_at),
-    movements: [movement],
-    merchant: {
-      fullTitle: tx.hash,
-      mcc: null,
-      location: null
-    },
-    comment: null
-  }
-}
-
-export function convertTransactions (
-  txs: LedgerExplorerTx[],
-  account: RawLedgerAccount
-): Transaction[] {
-  return txs
-    .map(tx => convertTransaction(tx, account))
-    .filter((tx): tx is Transaction => tx != null)
+  return Array.from(groups.values())
+    .filter(g => g.main.type !== 'FEES')
+    .map(group => {
+      const movement = buildMovement(group)
+      return {
+        hold: false,
+        date: new Date(group.main.date),
+        movements: [movement] as [Movement],
+        merchant: group.main.txHash !== ''
+          ? { fullTitle: group.main.txHash, mcc: null, location: null }
+          : null,
+        comment: null
+      } satisfies Transaction
+    })
 }
