@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<provider>
+    <id>ledger-live</id>
+    <company>0</company>
+    <description>
+        Синхронизация всех монет через Ledger Live.
+        Подключите Ledger к компьютеру и запустите Ledger Live перед синхронизацией.
+        Плагин автоматически получает все аккаунты и транзакции через локальный API Ledger Live.
+    </description>
+    <version>1.0</version>
+    <build>1</build>
+    <modular>true</modular>
+    <api>public</api>
+    <files>
+        <js>index.js</js>
+        <preferences>preferences.xml</preferences>
+    </files>
+</provider>
